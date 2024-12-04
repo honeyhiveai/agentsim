@@ -94,7 +94,9 @@ class GlobalState:
     @staticmethod
     async def evolve_idea(client, idea: "Idea") -> "Idea":
         # evolve the idea based on its seed
-        prompt = f"Given the group of personas '{idea.seed}', think about a problem they all might have in common, and suggest a unique and innovative business idea tailored to this group's characteristics and potential interests. Make sure you are basing the ideas based on my previous feedback. The business idea should be concise, creative, and aligned with the group's likely preferences and skills. IMPORTANT: Start with the common problem, and then build an elevator pitch of the business idea in one single sentence, and don't refer to the personas in your response."
+        prompt_group = f"Given the group of personas '{idea.seed}', think about a problem they all might have in common, and suggest a unique and innovative business idea tailored to this group's characteristics and potential interests. Make sure you are basing the ideas based on my previous feedback. The business idea should be concise, creative, and aligned with the group's likely preferences and skills. IMPORTANT: Start with the common problem, and then build an elevator pitch of the business idea in one single sentence, and don't refer to the personas in your response."
+        
+        prompt = f"Given the persona '{idea.seed}', think about a problem they might have in common, and suggest a unique and innovative business idea tailored to this persona's characteristics and potential interests. Make sure you are basing the ideas based on my previous feedback. The business idea should be concise, creative, and aligned with the persona's likely preferences and skills. IMPORTANT: Start with the common problem, and then build an elevator pitch of the business idea in one single sentence, and don't refer to the persona in your response."
 
         try:
             response = await client.chat.completions.create(
@@ -141,10 +143,6 @@ class GlobalState:
             
             analysis = response.choices[0].message.content.strip()
             
-            # save analysis to file
-            with open(f"analysis_{idea.seed[:5]}.txt", "w") as f:
-                f.write(analysis)
-            
             analyzed_idea = Idea(
                 seed=analysis,
                 depth=idea.depth + 1,
@@ -156,3 +154,4 @@ class GlobalState:
         except Exception as e:
             print(f"GlobalState: Error analyzing idea: {e}", file=sys.stderr)
             return idea
+

@@ -21,6 +21,13 @@ if presumed_config:
 # load the simulation classes
 from .simulation import Simulation, ChatSimulation, Context
 
+from jinja2 import Template
+def render_messages(messages: list[dict], **kwargs):
+    return [{
+        'role': message['role'],
+        'content': Template(message['content']).render(**kwargs)
+    } for message in messages]
+
 __all__ = [
     'configs',
     'config',
@@ -28,6 +35,7 @@ __all__ = [
     'load_config',
     'evaluator',
     'aevaluator',
+    'render_messages',
     'llm_messages_call',
     'allm_messages_call',
     'run_async',

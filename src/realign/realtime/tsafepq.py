@@ -1,8 +1,9 @@
 import threading
-import bisect
+import heapq
 import random
 from typing import Any, Callable, Optional
 from state import GlobalState
+
 class ThreadSafePriorityQueue:
     
     def __init__(
@@ -32,12 +33,11 @@ class ThreadSafePriorityQueue:
             priority = 0
         
         with self._lock:
-            bisect.insort(self._queue, (priority, item))
+            heapq.heappush(self._queue, (priority, item))
             print(f"Pushed item: {item} with priority: {priority}")
             if len(self._queue) > self.max_size:
-                self._queue.pop()
+                heapq.heappop(self._queue)
             
-
     def poll(self) -> Optional[Any]:
         """
         Polls the highest-priority item from the queue.
@@ -50,7 +50,7 @@ class ThreadSafePriorityQueue:
                 return None
             if self.total_polls > self.stop_size:
                 GlobalState.stop_event.set()
-            priority, item = self._queue.pop(0)
+            priority, item = heapq.heappop(self._queue)
             print(f"Polled item: {item} with priority: {priority}")
             self.total_polls += 1
             return item
@@ -59,7 +59,19 @@ class ThreadSafePriorityQueue:
         """
         Polls multiple items from the queue.
         """
-        return [self.poll() for _ in range(n)]
+        with self._lock:
+            items = []
+            for _ in range(n):
+                if not self._queue:
+                    break
+                if self.total_polls > self.stop_size:
+                    GlobalState.stop_event.set()
+                    break
+                priority, item = heapq.heappop(self._queue)
+                print(f"Polled item: {item} with priority: {priority}")
+                self.total_polls += 1
+                items.append(item)
+            return items
 
     def poll_random(self) -> Optional[Any]:
         """

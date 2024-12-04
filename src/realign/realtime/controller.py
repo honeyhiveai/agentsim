@@ -9,18 +9,30 @@ class Controller:
     Manages the overall workflow by initializing queues, global state, and processes.
     """
     
-    def start_processes(self, runtime_seconds: Optional[int] = None):
+    def start_processes(self, runtime_seconds: Optional[int] = None, process_names: Optional[list[str]] = None):
         """
         Starts all processes by initiating their threads.
         """
-        # start all processes
-        for name, process in GlobalState.processes.items():
-            print(f"\n\nController: Starting process '{name}'...")
+        if process_names:
+            for name in process_names:
+                if name not in GlobalState.processes.keys():
+                    print(f"Controller: Process '{name}' not found. Skipping...")
+                    continue
+                
+                process = GlobalState.get_process(name)
+                process.start()
+                print(f"Controller: Started process '{name}'.\n\n")
+            return
+        else:
+            # start all processes
+            for name, process in GlobalState.processes.items():
+                
+                print(f"\n\nController: Starting process '{name}'...")
 
-            process.start()
+                process.start()
 
-            print(f"Controller: Started process '{name}'.\n\n")
-        print(f"Controller: Started {len(GlobalState.processes)} processes.")
+                print(f"Controller: Started process '{name}'.\n\n")
+            print(f"Controller: Started {len(GlobalState.processes)} processes.")
         
         # start an asyncio event loop
         # Start broadcasting in a separate thread
@@ -41,11 +53,13 @@ class Controller:
         Signals all processes to stop and waits for them to finish.
         """
         GlobalState.stop_event.set()
-        print("Controller: Stopping processes...")
+        print(f"Controller: Stopping {len(GlobalState.processes)} processes...")
         time.sleep(1)
         for name, process in GlobalState.processes.items():
-            process.join()
-            print(f"Controller: Process '{name}' has been stopped.")
+            # first check if the process is running
+            if process.is_alive():
+                process.join()
+                print(f"Controller: Process '{name}' has been stopped.")
             
         print("Controller: All processes have been stopped.")
         

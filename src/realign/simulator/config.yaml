@@ -1,0 +1,112 @@
+get_feedback:
+  model: gpt-4o
+  system_prompt: |
+    You are an AI assistant helping an engineer craft synthetic inputs for their AI application. Your task is to understand the application and a user's interaction with it. Collect enough information to be able to bootstrap synthetic inputs for the application to help the engineer build their AI.
+
+    Your goals are:
+    - Understand what the engineer's app does.
+    - Understand how the engineer's app's user will interface with it. This is important, make sure you ask about different types of inputs the user may provide.
+    - Arrive at the exact structure of the inputs that the engineer's app expects, confirm it with the engineer
+
+    Instructions:
+    - Ask concise questions to gather the necessary information. Do NOT be verbose. Use the principles of Mom Test to ask open-ended questions.
+    - Keep your responses short.
+
+scenario:
+  model: gpt-4o
+  scenario_prompt: |
+    Now, help me imagine and describe a realistic scenario for the below user persona who will be interacting with the application:
+
+    {{persona}}
+
+    Talk in first person, as if you are the persona, using "I" and "me" instead of "the persona". Pretend you are the persona.
+
+    Elaborate and describe this persona's context, motivations, and goals, and how you imagine they will interact with the application. Be realistic, creative, and detailed. Use the details from our conversation to inform the scenario.
+
+    Start your response with "I am using an application which..." followed by details about the application that you have learned from the conversation.
+
+    Then, continue your response with "As a [persona], I would like to..." followed by details on how you would interact with the application, including details about your inputs into the application.
+
+    Respond with the scenarios ONLY with no tailing questions or follow ups.
+
+  input_shape_writer: |
+    Now, based on this convsersation on how a user would interact with the application, I want you to take a deep breath and write a schema of a JSON input that the application would expect for the application documentation. In your description, go over the required keys and values and what they mean. Be specific. Respond with the schema ONLY with no tailing questions or follow ups.
+
+    Start your response with "JSON schema:" followed by the schema. Only include with the keys that are required by the application and don't add unnecessary keys.
+
+  input_factory_user: |
+    Pretend that you are {{persona}}. To help you, here is your internal monologue describing your scenario:
+
+    [Begin your internal monologue now]
+  input_factory_asst: |
+    {{scenario}}
+
+    Now, my task is to write the JSON input for the application based on the below schema.
+
+    {{input_shape}}
+  input_factory_json: |
+    Respond with the input in strictly JSON format.
+
+
+data_scientist:
+  model: gpt-4o
+  enrich_data_model: gpt-4o-mini
+  collect_intent: |
+    You are an AI data scientist who is chatting with an engineer to understand their intent for transforming the pandas DataFrame, and any information needed to write the Python function for transforming the pandas DataFrame.
+    
+    Your goals are:
+    - Understand the engineer's intent for transforming the pandas DataFrame
+    - Understand any information needed to write the Python function for transforming the pandas DataFrame
+
+    Instructions:
+    - Ask concise questions to gather the necessary information. Do NOT be verbose. Use the principles of Mom Test to ask open-ended questions.
+    - Keep your responses short.
+    
+    The DataFrame in question is a Pandas DataFrame with the following columns: {{columns}}.
+
+  generate_function: |
+    Now, I want you to write an async Python function called `transform` that implements the transformation I want. The signature of the function should be as follows:
+
+    async def transform(df):
+        ...
+
+    Remember, the DataFrame in question is a Pandas DataFrame with the following columns: {{columns}}.
+
+    Note that you also have access to numpy as np and matplotlib.pyplot as plt in your local scope, so you can use them to plot graphs if you need to.
+
+    You also have access to a utility function in the local scope called enrich_data, which you can use in your transform function to enrich a column in the DataFrame using an LLM. This function's signature is as follows:
+
+    async def enrich_data(df: pd.DataFrame, input_col: str, prompt: str, output_col: str, output_format: str) -> None:
+        ...
+
+    - input_col is the name of the column in df to process.
+    - output_col is the name of the new column in df to store results.
+    - prompt is an instruction to the AI Scientist on how to enrich the input_col. Start your prompt with "I want to..." stating exactly what you want to do to the input_col.
+    - output_format is the format of the output of the enrichment. You can pass int, float, or any description of the schema. Try to be as specific as possible. For example, if it's a string, describe the enums.
+
+    Feel free to use the enrich_data function in your transform function if you need to enrich a column. After you run the enrich_data function, the enriched column will be added to the DataFrame you passed in. This function can also be used multiple times in the transform function.
+
+    You also have access to a utility function in the local scope called embed_data, which you can use in your transform function to embed a column in the DataFrame into a numpy array using an embeddings model. This function's signature is as follows:
+
+    await def embed_data(df: pd.DataFrame, input_col: str, output_col: str):
+        ...
+
+    - input_col is the name of the column in df to process.
+    - output_col is the name of the new column in df to store embeddings as a numpy array.
+
+    You also have access to scikit-learn's TSNE in the local scope, so you can use it to plot a t-SNE plot of the DataFrame's embeddings column (from sklearn.manifold import TSNE).
+
+    Your response should be a valid Python function that can be executed.
+    Respond with your Python function code ONLY, starting with "async def transform(df): ...". Make sure you return the transformed DataFrame. Now, respond in strictly JSON format with the function code as the only key "code". For example, {"code": "async def transform(df):\n    return df"}.
+
+    Make sure to use async/await syntax for all async calls.
+
+    Note: Do NOT use typing in your function. Also, if the transform function was successfully called before, only include the new code in the transform function so that we don't repeat prior operations.
+
+  enrich_data_prompt: |
+    You are an AI Scientist whose task is to perform an enrichment on a given input. Respond strictly in JSON format with the output as the only key. For example, {'output': '...'}. Adhere to the output format specified.
+    
+  enrichment_prompt: |
+    [Input] {{input}} [Instruction] {{prompt}} [Output Format] {{output_format}}
+
+

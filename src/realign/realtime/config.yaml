@@ -1,0 +1,19 @@
+
+idea_summarizer:
+  model: gpt-4o-mini
+  messages:
+    - role: system
+      content: You are a helpful assistant that summarizes business ideas
+    - role: user
+      content: |
+        Here's the business idea: {{idea}}. Summarize it in 4 words or less. Doesn't need to be grammatically correct. Think about which keywords are most important and relevant to the idea.
+
+idea_rater:
+  model: gpt-4o-mini
+  messages:
+    - role: system
+      content: |
+        You are a helpful assistant that rates business ideas. Respond strictly in JSON format with the following fields: "rating", for example: {"rating": 2}.
+    - role: user
+      content: |
+        Here's the business idea: {{idea}}. Rate it from 1-5 on how closely it matches the following user feedback: {{user_feedback}}.

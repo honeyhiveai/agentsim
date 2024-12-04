@@ -3,7 +3,7 @@ import warnings
 import copy
 
 from typing import Callable, Any, Coroutine, Optional
-
+from jinja2 import Template
 class bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
@@ -47,7 +47,8 @@ async def arun_callables(funcs: list[Callable],
     results = await asyncio.gather(*tasks)
     return [result for _, result in sorted(results, key=lambda x: x[0])]
 
-
+def render(text: str, **kwargs):
+    return Template(text).render(**kwargs)
 
 def run_async(
     tasks: list[Coroutine] | Coroutine,
@@ -119,6 +120,48 @@ def try_import(module_name: str | None = None,
         return None
 
 class dotdict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        d = dict(*args, **kwargs)
+        for k, v in d.items():
+            self[k] = self._convert(v)
+
+    def __getattr__(self, key):
+        if key.startswith('__') and key.endswith('__'):
+            return super().__getattr__(key)
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute or key '{key}'")
+
+    def __setattr__(self, key, value):
+        if key.startswith('__') and key.endswith('__'):
+            super().__setattr__(key, value)
+        else:
+            self[key] = self._convert(value)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, self._convert(value))
+
+    def __delattr__(self, key):
+        if key.startswith('__') and key.endswith('__'):
+            super().__delattr__(key)
+        else:
+            del self[key]
+
+    def __deepcopy__(self, memo):
+        return dotdict(copy.deepcopy(dict(self), memo))
+
+    def _convert(self, value):
+        if isinstance(value, dict) and not isinstance(value, dotdict):
+            return dotdict({k: self._convert(v) for k, v in value.items()})
+        elif isinstance(value, list):
+            return [self._convert(item) for item in value]
+        elif isinstance(value, tuple):
+            return tuple(self._convert(item) for item in value)
+        else:
+            return value
+
     def __getattr__(self, key):
         if key.startswith('__') and key.endswith('__'):
             return super().__getattr__(key)
@@ -129,7 +172,7 @@ class dotdict(dict):
                 self[key] = value
             return value
         except KeyError:
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute or key '{key}'")
+            raise AttributeError(f"key '{key}' not found in {self}")
 
     def __setattr__(self, key, value):
         if key.startswith('__') and key.endswith('__'):
